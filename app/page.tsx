@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ConvertResult, PlaylistConvertResult, TrackRef } from "@/lib/types";
 import type { Provider } from "@/lib/parse";
 
@@ -17,6 +17,8 @@ export default function Home() {
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [pasteHint, setPasteHint] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   async function convert(e: React.FormEvent) {
     e.preventDefault();
@@ -46,8 +48,15 @@ export default function Home() {
     try {
       const text = await navigator.clipboard.readText();
       if (text) setUrl(text);
+      else {
+        inputRef.current?.focus();
+        setPasteHint(true);
+        setTimeout(() => setPasteHint(false), 3000);
+      }
     } catch {
-      // clipboard permission denied
+      inputRef.current?.focus();
+      setPasteHint(true);
+      setTimeout(() => setPasteHint(false), 3000);
     }
   }
 
@@ -90,6 +99,7 @@ export default function Home() {
         <form onSubmit={convert} className="space-y-3">
           <div className="relative">
             <input
+              ref={inputRef}
               type="url"
               inputMode="url"
               autoCapitalize="off"
@@ -98,6 +108,14 @@ export default function Home() {
               enterKeyHint="go"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
+              onPaste={(e) => {
+                const text = e.clipboardData.getData("text");
+                if (text) {
+                  e.preventDefault();
+                  setUrl(text);
+                  setPasteHint(false);
+                }
+              }}
               placeholder="Klistra in en låt- eller spellistlänk…"
               className="w-full h-14 pl-4 pr-24 rounded-2xl bg-zinc-900/80 border border-zinc-800 placeholder-zinc-500 text-base outline-none focus:border-zinc-600 focus:bg-zinc-900 transition"
             />
@@ -117,6 +135,11 @@ export default function Home() {
             {loading ? "Konverterar…" : "Konvertera"}
           </button>
         </form>
+        {pasteHint && (
+          <p className="mt-3 text-center text-sm text-zinc-400 animate-pulse">
+            Tryck länge i fältet och välj "Klistra in"
+          </p>
+        )}
 
         {error && (
           <div className="mt-5 p-4 rounded-2xl bg-red-950/40 border border-red-900/60 text-sm text-red-200">
